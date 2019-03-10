@@ -1,6 +1,6 @@
 body {
-  background-image: url("/static/images/landscape.jpg");
   background-color: #eee;
+  text-align: center;
 }
 .form-login {
   max-width: 330px;

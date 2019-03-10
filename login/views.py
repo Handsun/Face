@@ -7,6 +7,8 @@ from django.shortcuts import redirect
 from django.conf import settings
 from login import models
 from login import forms
+from login import face
+import json
 # Create your views here.
 
 
@@ -17,7 +19,8 @@ def hash_code(s, salt='mysite'):# 加点盐
     return h.hexdigest()
 
 def index(request):
-    pass
+    request.session['index_active'] = 'active'
+    request.session['detect_active'] = 'inactive'
     return render(request,'login/index.html')
 
 
@@ -146,3 +149,79 @@ def user_confirm(request):
         confirm.delete()
         message = '感谢确认，请使用账户登录！'
         return render(request,'login/confirm.html',locals())
+
+
+def detect(request):
+    request.session['index_active'] = 'inactive'
+    request.session['detect_active'] = 'active'
+    if request.session.get('is_login', None):
+        if request.method == 'GET':
+            return render(request, 'login/detect.html', locals())
+
+        if request.method == 'POST':
+            file = request.FILES.get('file',None)
+            file_path = settings.IMAGE_ROOT + file.name
+            with open(file_path,'wb') as f:
+                for i in file.chunks():
+                    f.write(i)
+            file_src = file.name
+            result = json.loads(face.FaceDetect(file_path))['faces'][0]['attributes']
+            keys = ['emotion', 'gender', 'age', 'mouthstatus', 'glass', 'skinstatus', 'smile', 'eyestatus', 'ethnicity']
+            image_result = {
+                'emotion':'',
+                'gender': '',
+                'age': '',
+                'glass': '',
+                'smile': '',
+                'ethnicity':''
+            }
+            if not result is None:
+                for key in keys:
+                    if key == 'age' and result[key]['value']:
+                        image_result[key] = result[key]['value']
+
+                    if key == 'gender' and result[key]['value']:
+                        if result[key]['value'] == 'Male':
+                            image_result[key] = '男'
+                        elif result[key]['value'] == 'Female':
+                            image_result[key] = '女'
+                        else:
+                            image_result[key] = '未知'
+
+                    if key == 'glass' and result[key]['value']:
+                        if result[key]['value'] == 'Dark':
+                            image_result[key] = '戴墨镜'
+                        elif result[key]['value'] == 'Normal':
+                            image_result[key] = '戴眼镜'
+
+                    if key == 'ethnicity' and result[key]['value']:
+                        if result[key]['value'] == 'ASIAN':
+                            image_result[key] = '亚洲人'
+                        elif result[key]['value'] == 'WHITE':
+                            image_result[key] = '白人'
+                        elif result[key]['value'] == 'BLACK':
+                            image_result[key] = '黑人'
+
+                    if key == 'smile' and result[key]['value']:
+                        if result[key]['value'] > result[key]['threshold']:
+                            image_result[key] = '微笑'
+
+                    if key == 'emotion':
+                        emotion = max(result[key],key=result[key].get)
+                        if emotion == 'surprise':
+                            image_result[key] = '惊讶'
+                        elif emotion == 'amger':
+                            image_result[key] = '愤怒'
+                        elif emotion == 'disgust':
+                            image_result[key] = '厌恶'
+                        elif emotion == 'fear':
+                            image_result[key] = '恐惧'
+                        elif emotion == 'happiness':
+                            image_result[key] = '高兴'
+                        elif emotion == 'neutral':
+                            image_result[key] = '平静'
+                        elif emotion == 'sadness':
+                            image_result[key] = '伤心'
+            return render(request, 'login/detect.html', locals())
+    else:
+        return redirect('/login/')

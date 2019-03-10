@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% load staticfiles %}
+{% block title %}人脸检测{% endblock %}
+{% block css %}<link href="{% static 'css/login.css' %}" rel="stylesheet"/>{% endblock %}
+
+{% block content %}
+    {% if request.session.is_login %}
+
+        <form action="/detect/" method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="file" name="file" style="display: inline" />
+            <button type="submit" class="btn btn-primary" >分析</button>
+        `   <br>
+            {% if file_src %}
+                <div style="float: left ;width: 600px">
+                <image src="/static/image/{{ file_src }}"></image>
+                </div>
+                <div style="float: right;width: 800px;text-align: left;line-height: 50px">
+                    <div style="margin-top: 50px">
+                    <div>年龄：{{ image_result.age }}</div>
+                    <div>性别：{{ image_result.gender }}</div>
+                    <div>情绪：{{ image_result.emotion }}</div>
+                    <div>人种：{{ image_result.ethnicity }}</div>
+                    <div>眼镜：{{ image_result.glass }}</div>
+                    <div>微笑：{{ image_result.smile }}</div>
+                    </div>
+                </div>
+            {% endif %}
+        </form>
+    {% else %}
+    <h1>你尚未登录，只能访问公开内容！</h1>
+    {% endif %}
+{% endblock %}
